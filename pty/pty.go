@@ -49,6 +49,16 @@ func (pty *Pty) AttachPty(cmd *exec.Cmd) {
 	attach_pty(pty.tty, cmd)
 }
 
+// Get the pty master for IO
+func (pty *Pty) Master() *os.File {
+	return pty.pty
+}
+
+// Get the tty slave
+func (pty *Pty) Slave() *os.File {
+	return pty.tty
+}
+
 // Close the devices
 func (pty *Pty) Close() {
 	pty.tty.Close()

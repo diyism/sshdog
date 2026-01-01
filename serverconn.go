@@ -27,7 +27,7 @@ import (
 	"sync"
 
 	"github.com/google/shlex"
-	"github.com/matir/sshdog/pty"
+	"github.com/Matir/sshdog/pty"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -253,9 +253,18 @@ func (conn *ServerConn) ExecuteForChannel(shellCmd []string, ch ssh.Channel) uin
 		proc.Stderr = ch.Stderr()
 	} else {
 		conn.pty.AttachPty(proc)
+	}
+	if err := proc.Start(); err != nil {
+		dbg.Debug("Failed to start process: %v", err)
+		return 1
+	}
+	if conn.pty != nil {
 		conn.pty.AttachIO(ch, ch)
 	}
-	err := proc.Run()
+	err := proc.Wait()
+	if conn.pty != nil {
+		conn.pty.Close()
+	}
 	if errors.As(err, &exerr) {
 		dbg.Debug("Finished execution with error: %v", err)
 		return uint32(exerr.ExitCode())

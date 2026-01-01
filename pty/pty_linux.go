@@ -88,7 +88,6 @@ func attach_pty(tty *os.File, cmd *exec.Cmd) error {
 		cmd.SysProcAttr = &syscall.SysProcAttr{}
 	}
 	cmd.SysProcAttr.Setsid = true
-	cmd.SysProcAttr.Setctty = true
-	cmd.SysProcAttr.Ctty = int(tty.Fd())
+	// Don't use Setctty - let the process acquire the controlling terminal naturally
 	return nil
 }
