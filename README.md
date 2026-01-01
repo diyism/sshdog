@@ -23,7 +23,7 @@ Example usage:
 ```
 % echo 2222 > config/port
 % cp ~/.ssh/id_rsa.pub config/authorized_keys
-% go build .
+% go build -ldflags="-s -w" .
 % ./sshdog
 [DEBUG] Generating random host key...
 [DEBUG] Adding authorized_keys.
