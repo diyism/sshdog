@@ -21,11 +21,10 @@ Supported features:
 Example usage:
 
 ```
-% go build .
 % ssh-keygen -t rsa -b 2048 -N '' -f config/ssh_host_rsa_key
 % echo 2222 > config/port
 % cp ~/.ssh/id_rsa.pub config/authorized_keys
-% rice append --exec sshdog
+% go build .
 % ./sshdog
 [DEBUG] Adding hostkey file: ssh_host_rsa_key
 [DEBUG] Adding authorized_keys.
@@ -33,6 +32,8 @@ Example usage:
 [DEBUG] Waiting for shutdown.
 [DEBUG] select...
 ```
+
+Note: Configuration files in the `config/` directory are embedded into the binary at build time using Go's native `embed` package. No additional tools are required.
 
 Author: David Tomaschik <dwt@google.com>
 
