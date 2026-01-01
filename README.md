@@ -41,7 +41,7 @@ Example usage:
 To connect without host key verification (useful for serverless/ephemeral environments):
 
 ```
-ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222 any@host
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222 any@your_machine_ip
 ```
 
 Note: Configuration files in the `config/` directory are embedded into the binary at build time using Go's native `embed` package. No additional tools are required.
