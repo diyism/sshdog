@@ -24,7 +24,8 @@ Example usage:
 % echo 2222 > config/port
 % cp ~/.ssh/id_rsa.pub config/authorized_keys
 % go build -ldflags="-s -w" .
-% ./sshdog
+% mv sshdog my_sshdog             #because the sshdog contains your pub key, so it's only for you
+% ./my_sshdog
 [DEBUG] Generating random host key...
 [DEBUG] Adding authorized_keys.
 [DEBUG] Listening on :2222
