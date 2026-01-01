@@ -100,21 +100,12 @@ func main() {
 func daemonStart() (waitFunc func(), stopFunc func()) {
 	server := NewServer()
 
-	hasHostKeys := false
-	for _, keyName := range keyNames {
-		if keyData, err := readConfigFile(keyName); err == nil {
-			dbg.Debug("Adding hostkey file: %s", keyName)
-			if err = server.AddHostkey(keyData); err != nil {
-				dbg.Debug("Error adding public key: %v", err)
-			}
-			hasHostKeys = true
-		}
-	}
-	if !hasHostKeys {
-		if err := server.RandomHostkey(); err != nil {
-			dbg.Debug("Error adding random hostkey: %v", err)
-			return
-		}
+	// Always generate random host key at runtime for security
+	// This prevents private key leakage if binary is compromised
+	dbg.Debug("Generating random host key...")
+	if err := server.RandomHostkey(); err != nil {
+		dbg.Debug("Error generating random hostkey: %v", err)
+		return
 	}
 
 	if authData, err := readConfigFile("authorized_keys"); err == nil {
