@@ -66,7 +66,8 @@ func open_pty() (pty, tty *os.File, err error) {
 		return nil, nil, err
 	}
 
-	tty, err = os.OpenFile(tty_name, os.O_RDWR|unix.O_NOCTTY, 0)
+	// Open without O_NOCTTY so it can become controlling terminal
+	tty, err = os.OpenFile(tty_name, os.O_RDWR, 0)
 	if err != nil {
 		pty.Close()
 		return nil, nil, err
@@ -88,6 +89,8 @@ func attach_pty(tty *os.File, cmd *exec.Cmd) error {
 		cmd.SysProcAttr = &syscall.SysProcAttr{}
 	}
 	cmd.SysProcAttr.Setsid = true
-	// Don't use Setctty - let the process acquire the controlling terminal naturally
+	cmd.SysProcAttr.Setctty = true
+	// Use fd 0 (stdin) since cmd.Stdin is set to tty
+	cmd.SysProcAttr.Ctty = 0
 	return nil
 }
