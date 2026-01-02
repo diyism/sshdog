@@ -8,10 +8,14 @@
       local port="$1"
       shift
     
-      ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="nc -X 5 -x 100.71.153.100:$port %h %p" "$@"
+      ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="nc -X 5 -x 192.168.0.101:$port %h %p" "$@"
     }
-    解读: 1. -p 2222, 因为sshdog默认监听2222; 2.-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null, 因为目标可能是容器ip地址会变
-    然后就可以 ssh-p 3211 any@127.0.0.1 来访问目标代理的机器本身
+    解读:
+    1. -p 2222, 因为sshdog默认监听2222;
+    2. -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null, 因为目标可能是容器ip地址会变;
+    3. -o ProxyCommand="nc -X 5 -x 192.168.0.101:$port %h %p,       因为 远端socks5代理 已经转发到 本机局域网ip监听$port 上
+    然后就可以访问目标代理的机器本身(1.any是因为sshdog不关心user, 始终采用运行它的那个user, 2. 127.0.0.1指的是远端代理机器):
+    ssh-p 3211 any@127.0.0.1
 
 # SSHDog
 
