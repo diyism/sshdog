@@ -10,6 +10,7 @@
     
       ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="nc -X 5 -x 100.71.153.100:$port %h %p" "$@"
     }
+    解读: 1. -p 2222, 因为sshdog默认监听2222; 2.-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null, 因为目标可能是容器ip地址会变
     然后就可以 ssh-p 3211 root@127.0.0.1 来访问目标代理的机器本身
 
 # SSHDog
