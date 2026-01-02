@@ -8,7 +8,7 @@
       local port="$1"
       shift
     
-      ssh -o ProxyCommand="nc -X 5 -x 100.71.153.100:$port %h %p" "$@"
+      ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="nc -X 5 -x 100.71.153.100:$port %h %p" "$@"
     }
     然后就可以 ssh-p 3211 root@127.0.0.1 来访问目标代理的机器本身
 
