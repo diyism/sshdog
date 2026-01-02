@@ -1,3 +1,17 @@
+    可以替代tailscale ssh, 利用ssh proxycommand, 在~/.bashrc里添加, 并souce ~/.bashrc:
+    ssh-p() {
+      if [[ $# -lt 2 ]]; then
+          echo "Usage: ssh-p <port> [ssh options] user@host"
+          return 1
+      fi
+    
+      local port="$1"
+      shift
+    
+      ssh -o ProxyCommand="nc -X 5 -x 100.71.153.100:$port %h %p" "$@"
+    }
+    然后就可以 ssh-p 3211 root@127.0.0.1 来访问目标代理的机器本身
+
 # SSHDog
 
 SSHDog is your go-anywhere lightweight SSH server.  Written in Go, it aims
