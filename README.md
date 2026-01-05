@@ -8,7 +8,7 @@
       local port="$1"
       shift
     
-      ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="nc -X 5 -x 192.168.0.101:$port %h %p" "$@"
+      ssh -t -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="nc -X 5 -x 192.168.0.101:$port %h %p" "$@" /usr/bin/bash --login
     }
     解读:
     1. -p 2222, 因为sshdog默认监听2222;
