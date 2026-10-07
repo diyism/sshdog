@@ -56,13 +56,144 @@ func NewServerConn(conn net.Conn, s *Server) (*ServerConn, error) {
 	}, nil
 }
 
+// Remote forwarding (RFC 4254 §7): the payload of a tcpip-forward or
+// cancel-tcpip-forward global request.
+type tcpipForwardRequest struct {
+	BindAddr string
+	BindPort uint32
+}
+
+// Payload of a forwarded-tcpip channel opened back to the client when a
+// connection arrives on a remotely forwarded port.
+type forwardedTCPIPPayload struct {
+	Addr       string
+	Port       uint32
+	OriginAddr string
+	OriginPort uint32
+}
+
 func (conn *ServerConn) ServiceGlobalRequests() {
+	listeners := make(map[string]net.Listener)
+	defer func() {
+		for key, ln := range listeners {
+			dbg.Debug("Closing forwarding listener: %s", key)
+			ln.Close()
+		}
+	}()
 	for r := range conn.reqs {
 		dbg.Debug("Received request %s plus %d bytes.", r.Type, len(r.Payload))
+		switch r.Type {
+		case "tcpip-forward":
+			conn.handleTCPIPForward(r, listeners)
+		case "cancel-tcpip-forward":
+			var fwd tcpipForwardRequest
+			if err := ssh.Unmarshal(r.Payload, &fwd); err != nil {
+				dbg.Debug("Error unmarshaling cancel-tcpip-forward: %v", err)
+				if r.WantReply {
+					r.Reply(false, []byte{})
+				}
+				continue
+			}
+			key := fmt.Sprintf("%s:%d", fwd.BindAddr, fwd.BindPort)
+			ln, ok := listeners[key]
+			if ok {
+				delete(listeners, key)
+				ln.Close()
+				dbg.Debug("Canceled forwarding: %s", key)
+			}
+			if r.WantReply {
+				r.Reply(ok, []byte{})
+			}
+		default:
+			if r.WantReply {
+				r.Reply(true, []byte{})
+			}
+		}
+	}
+}
+
+func (conn *ServerConn) handleTCPIPForward(r *ssh.Request, listeners map[string]net.Listener) {
+	var fwd tcpipForwardRequest
+	if err := ssh.Unmarshal(r.Payload, &fwd); err != nil {
+		dbg.Debug("Error unmarshaling tcpip-forward: %v", err)
 		if r.WantReply {
+			r.Reply(false, []byte{})
+		}
+		return
+	}
+	key := fmt.Sprintf("%s:%d", fwd.BindAddr, fwd.BindPort)
+	if _, exists := listeners[key]; exists {
+		dbg.Debug("Forwarding already exists: %s", key)
+		if r.WantReply {
+			r.Reply(false, []byte{})
+		}
+		return
+	}
+	ln, err := net.Listen("tcp", key)
+	if err != nil {
+		dbg.Debug("Unable to setup forwarding: %v", err)
+		if r.WantReply {
+			r.Reply(false, []byte{})
+		}
+		return
+	}
+	// The actual bound port matters when the client requested port 0.
+	actualPort := uint32(ln.Addr().(*net.TCPAddr).Port)
+	if fwd.BindPort == 0 {
+		key = fmt.Sprintf("%s:%d", fwd.BindAddr, actualPort)
+	}
+	listeners[key] = ln
+	dbg.Debug("Forwarding request: listening on %s for %v", ln.Addr(), fwd)
+	if r.WantReply {
+		if fwd.BindPort == 0 {
+			payload := ssh.Marshal(struct{ Port uint32 }{actualPort})
+			r.Reply(true, payload)
+		} else {
 			r.Reply(true, []byte{})
 		}
 	}
+	go conn.serveForwardListener(ln, fwd.BindAddr, actualPort)
+}
+
+func (conn *ServerConn) serveForwardListener(ln net.Listener, bindAddr string, bindPort uint32) {
+	for {
+		c, err := ln.Accept()
+		if err != nil {
+			dbg.Debug("Forwarding listener closed: %v", err)
+			return
+		}
+		go conn.handleForwardedConn(c, bindAddr, bindPort)
+	}
+}
+
+func (conn *ServerConn) handleForwardedConn(c net.Conn, bindAddr string, bindPort uint32) {
+	defer c.Close()
+	originAddr, originPort := "", uint32(0)
+	if ta, ok := c.RemoteAddr().(*net.TCPAddr); ok {
+		originAddr = ta.IP.String()
+		originPort = uint32(ta.Port)
+	}
+	connectedAddr := bindAddr
+	if connectedAddr == "" {
+		if ta, ok := c.LocalAddr().(*net.TCPAddr); ok {
+			connectedAddr = ta.IP.String()
+		}
+	}
+	payload := ssh.Marshal(forwardedTCPIPPayload{
+		Addr:       connectedAddr,
+		Port:       bindPort,
+		OriginAddr: originAddr,
+		OriginPort: originPort,
+	})
+	ch, reqs, err := conn.OpenChannel("forwarded-tcpip", payload)
+	if err != nil {
+		dbg.Debug("Unable to open forwarded-tcpip channel: %v", err)
+		return
+	}
+	defer ch.Close()
+	go ssh.DiscardRequests(reqs)
+	go io.Copy(ch, c)
+	io.Copy(c, ch)
 }
 
 // Handle a single established connection
